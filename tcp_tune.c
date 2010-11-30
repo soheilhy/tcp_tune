@@ -28,7 +28,7 @@
 #include <linux/time.h>
 #include <linux/ktime.h>
 #include <linux/timer.h>
-
+#include <linux/sysctl.h>
 #include <net/tcp.h>
 
 //#define TCP_TUNE_DEBUG
@@ -41,100 +41,27 @@
 #define TUNE_COMPAT 35
 #endif
 
+#if TUNE_COMPAT < 19
+#define CTL_UNNUMBERED -2
+#define CTL_NAME(NAME) .ctl_name = (NAME)
+#define CTL_UNNAME .ctl_name = CTL_UNNUMBERED,
+
+static inline void set_dst_metric_rtt(struct dst_entry *dst, int metric,
+                              unsigned long rtt)
+{
+        dst->metrics[metric-1] = jiffies_to_msecs(rtt);
+}
+
+#else
+#define CTL_UNNAME 
+#define CTL_NAME(NAME)
+#endif
+
+
 MODULE_AUTHOR("Soheil Hassas Yeganeh <soheil@cs.toronto.edu>");
 MODULE_DESCRIPTION("TCP parameter tuner");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("0.1-ALPHA");
-/*
-static int port __read_mostly = 0;
-MODULE_PARM_DESC(port, "Port to match (0=all)");
-module_param(port, int, 0);
-
-static unsigned int bufsize __read_mostly = 4096;
-MODULE_PARM_DESC(bufsize, "Log buffer size in packets (4096)");
-module_param(bufsize, uint, 0);
-
-static int bucket_length __read_mostly = 1;
-MODULE_PARM_DESC(bucket_length, "Length of each bucket in the histogram (1) except the last bucket length is not bounded.");
-module_param(bucket_length, int, 0);
-
-static int number_of_buckets  __read_mostly = 1;
-MODULE_PARM_DESC(number_of_buckets, "Number of buckets in the histogram (1)");
-module_param(number_of_buckets, int, 0);
-
-static int live __read_mostly = 0;
-MODULE_PARM_DESC(live, "(0) stats of completed flows are printed, (1) stats of live flows are printed.");
-module_param(live, int, 0);
-
-static inline struct timespec get_time(void) {
-    struct timespec ts;
-    ktime_get_ts(&ts);
-    return ts;
-}
-
-static int funct() {
-ret:
-    jprobe_return();
-    return 0;
-}
-
-static struct jprobe tcp_recv_jprobe = {
-    .kp = {
-        .symbol_name	= "tcp_v4_do_rcv",
-    },
-    .entry	= (kprobe_opcode_t*) jtcp_v4_do_rcv,
-};
-
-static inline struct timespec tcpprobe_timespec_sub
-                                (struct timespec lhs, struct timespec rhs) {
-    struct timespec tv;
-    tv.tv_sec = lhs.tv_sec - rhs.tv_sec;
-    tv.tv_nsec = lhs.tv_nsec - rhs.tv_sec;
-    return tv;
-}
-
-static inline int tcpprobe_timespec_larger( struct timespec lhs, 
-                                            struct timespec rhs) {
-    int ret = lhs.tv_sec > rhs.tv_sec || 
-        (lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec > rhs.tv_nsec);
-    return ret;
-}
-
-
-#define EXPIRE_TIMEOUT (jiffies + HZ )
-#define EXPIRE_SKB (2*60)
-static void prune_timer(unsigned long data) {
-    int i;
-    struct timespec now = get_time(); 
-    spin_lock_bh(&tcp_flow_spy.lock);
-    for (i = 0; i < HASHTABLE_SIZE; i++) {
-        struct hashtable_entry* entry = &tcp_flow_hashtable.entries[i];
-        struct tcp_flow_log* log = 0;
-
-    	if (unlikely(!entry)) {
-	        continue;
-	    }
-
-        log = entry->head;
-        while (log) {
-            struct timespec interval
-                = tcpprobe_timespec_sub(now, log->last_packet_tstamp);
-            struct tcp_flow_log* nextLog = log->next;
-            if (interval.tv_sec > EXPIRE_SKB) {
-                remove_from_hashentry(entry, log); 
-                log->next = tcp_flow_spy.finished;
-                tcp_flow_spy.finished = log;
-            }
-            log = nextLog;
-        }
-    }
-
-    tcp_flow_spy.timer.expires = EXPIRE_TIMEOUT;
-    spin_unlock_bh(&tcp_flow_spy.lock);
-    add_timer(&tcp_flow_spy.timer);
-}
-
-*/
 
 int sysctl_tcp_initial_cwnd __read_mostly = 3;
 int sysctl_tcp_cwnd_clamp __read_mostly = 64;
@@ -143,8 +70,9 @@ int sysctl_tcp_random_rto __read_mostly = 0;
 int sysctl_tcp_min_rto __read_mostly = 20;
 
 int min_cwnd = 3;
-static struct ctl_table ipv4_table[] = {
+static struct ctl_table tcp_tune_table[] = {
 	{
+        CTL_UNNAME
 		.procname	= "tcp_initial_cwnd",
 		.data		= &sysctl_tcp_initial_cwnd,
 		.maxlen		= sizeof(int),
@@ -154,6 +82,7 @@ static struct ctl_table ipv4_table[] = {
         .extra1     = &min_cwnd
 	},
     {
+        CTL_UNNAME
         .procname   = "tcp_cwnd_clamp",
         .data       = &sysctl_tcp_cwnd_clamp,
         .maxlen     = sizeof(int),
@@ -161,6 +90,7 @@ static struct ctl_table ipv4_table[] = {
     	.proc_handler	= proc_dointvec,
     },
     {
+        CTL_UNNAME
         .procname   = "tcp_min_rto",
         .data       = &sysctl_tcp_min_rto,
         .maxlen     = sizeof(int),
@@ -168,6 +98,7 @@ static struct ctl_table ipv4_table[] = {
     	.proc_handler	= proc_dointvec,
     },
     {
+        CTL_UNNAME
         .procname   = "tcp_max_rto",
         .data       = &sysctl_tcp_max_rto,
         .maxlen     = sizeof(int),
@@ -175,14 +106,40 @@ static struct ctl_table ipv4_table[] = {
     	.proc_handler	= proc_dointvec,
     },
     {
+        CTL_UNNAME
         .procname   = "tcp_random_rto",
         .data       = &sysctl_tcp_random_rto,
         .maxlen     = sizeof(int),
         .mode       = 0644,
     	.proc_handler	= proc_dointvec,
     },
-    { }
+    {
+        CTL_NAME(0)
+    }
 };
+
+#if TUNE_COMPAT < 19
+static ctl_table ipv4_net_table[] = {
+    {
+        .ctl_name   = CTL_UNNUMBERED,
+        .procname   = "ipv4",
+        .mode       = 0555,
+        .child      = tcp_tune_table
+    },
+    { .ctl_name = 0 }
+};
+
+static ctl_table net_root_table[] = {
+    {
+        .ctl_name   = CTL_UNNUMBERED,
+        .procname   = "net",
+        .mode       = 0555,
+        .child      = ipv4_net_table
+    },
+    { .ctl_name = 0 }
+};
+#endif
+
 
 static inline void set_dst_metric_cwnd(struct dst_entry *dst, int metric, __u32 cwnd) {
     if (!dst_metric_locked(dst, metric)) {
@@ -190,9 +147,7 @@ static inline void set_dst_metric_cwnd(struct dst_entry *dst, int metric, __u32 
     }
 }
 
-static __u32 jtcp_init_cwnd(struct tcp_sock *tp, struct dst_entry *dst) {
-    tp->snd_cwnd_clamp = sysctl_tcp_cwnd_clamp;
-    
+static void tcp_tune_dst(struct tcp_sock *tp, struct dst_entry *dst) {
     if (dst != NULL) {
         __u32 cwnd = dst_metric(dst, RTAX_INITCWND);
         set_dst_metric_cwnd(dst, RTAX_INITCWND, 
@@ -203,19 +158,26 @@ static __u32 jtcp_init_cwnd(struct tcp_sock *tp, struct dst_entry *dst) {
         set_dst_metric_cwnd(dst, RTAX_SSTHRESH, 
                 max_t( __u32, sysctl_tcp_initial_cwnd, cwnd) << 1 ) ; 
 
+        tp->snd_cwnd_clamp = max_t(__u32, sysctl_tcp_cwnd_clamp, tp->snd_cwnd_clamp);
+
+
         if (dst_metric(dst, RTAX_RTO_MIN) != sysctl_tcp_min_rto) {
-            
+
             sysctl_tcp_min_rto = 
                 jiffies_to_msecs(msecs_to_jiffies(sysctl_tcp_min_rto));
             set_dst_metric_rtt(dst, RTAX_RTO_MIN, 
                     msecs_to_jiffies(sysctl_tcp_min_rto));
-            
+
             dst->metrics[RTAX_LOCK-1] |= (1<<RTAX_RTO_MIN);
 
             tp->rttvar = dst_metric(dst, RTAX_RTO_MIN);
         }
     } 
+}
 
+
+static __u32 jtcp_init_cwnd(struct tcp_sock *tp, struct dst_entry *dst) {
+    tcp_tune_dst(tp, dst);
     jprobe_return();
     return 0;
 }
@@ -227,22 +189,69 @@ static struct jprobe tcp_init_cwnd_jprobe = {
     .entry	= (kprobe_opcode_t*) jtcp_init_cwnd,
 };
 
+static void  jtcp_init_congestion_control (struct sock* sk) {
+    struct tcp_sock *tp = tcp_sk(sk);
+    struct dst_entry *dst = __sk_dst_get(sk);
+    __u32 cwnd;
+
+    if (dst != NULL) {
+        tcp_tune_dst(tp, dst);
+        cwnd = (dst ? dst_metric(dst, RTAX_INITCWND) : 0);
+        tp->snd_cwnd = min_t(__u32, cwnd, tp->snd_cwnd_clamp);
+    }
+    jprobe_return();
+}
+
+static struct jprobe tcp_init_congestion_control_jprobe = {
+    .kp = {
+        .symbol_name	= "tcp_init_congestion_control",
+    },
+    .entry	= (kprobe_opcode_t*) jtcp_init_congestion_control,
+};
+
+static int jtcp_retransmit_skb(struct sock *sk, struct sk_buff *skb) {
+    struct tcp_sock *tp = tcp_sk(sk);
+    struct dst_entry *dst = __sk_dst_get(sk);
+    __u32 cwnd;
+
+    if (dst != NULL) {
+        tcp_tune_dst(tp, dst);
+        cwnd = (dst ? dst_metric(dst, RTAX_INITCWND) : 0);
+        tp->snd_cwnd = min_t(__u32, cwnd, tp->snd_cwnd_clamp);
+    }
+
+    jprobe_return();
+    return 0;
+}
+
+static struct jprobe tcp_retransmit_skb_jprobe = {
+    .kp = {
+        .symbol_name	= "tcp_retransmit_skb",
+    },
+    .entry	= (kprobe_opcode_t*) jtcp_retransmit_skb,
+};
+
+
 static struct ctl_table_header * hdr;
 
 static __init int tcptune_init(void) {
-
     int ret = register_jprobe(&tcp_init_cwnd_jprobe);
+    ret = register_jprobe(&tcp_init_congestion_control_jprobe);
+    ret = register_jprobe(&tcp_retransmit_skb_jprobe);
+
     if (ret) {
         goto err;
     }
 
-//    add_timer(&tcp_flow_spy.timer);*/  
-
-    hdr = register_sysctl_paths(net_ipv4_ctl_path, ipv4_table);
+#if TUNE_COMPAT > 18
+    hdr = register_sysctl_paths(net_ipv4_ctl_path, tcp_tune_table);
+#else
+    hdr = register_sysctl_table(net_root_table, 0);
+#endif
     if (hdr == NULL) {
         goto err;
     }
-    
+
     pr_info("TCP Tune registered\n"); 
     return 0;
 
@@ -254,22 +263,8 @@ module_init(tcptune_init);
 
 static __exit void tcptune_exit(void) {
     unregister_jprobe(&tcp_init_cwnd_jprobe);
+    unregister_jprobe(&tcp_init_congestion_control_jprobe);
+    unregister_jprobe(&tcp_retransmit_skb_jprobe);
     unregister_sysctl_table(hdr);
-/*    int i = 0;
-    if (timer_pending(&tcp_flow_spy.timer)) {
-        del_timer(&tcp_flow_spy.timer);
-    }
-
-    proc_net_remove(
-#if SPY_COMPAT >= 32
-            &init_net,
-#endif
-            procname);
-    unregister_jprobe(&tcp_transmit_jprobe);
-
-    for (i = 0; i < bufsize; i++) {
-        kfree(tcp_flow_spy.storage[i].snd_cwnd_histogram);
-    }
-    kfree(tcp_flow_spy.available);*/
 }
 module_exit(tcptune_exit);
