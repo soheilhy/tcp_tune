@@ -105,7 +105,6 @@ static int proc_tcp_tune_congestion_control(ctl_table *ctl, int write,
                             void __user *buffer, size_t *lenp, loff_t *ppos) {
 #else
 static int proc_tcp_tune_congestion_control(ctl_table *ctl, int write,
-                            struct file* filep,
                             void __user *buffer, size_t *lenp, loff_t *ppos) {
 #endif
 	ctl_table tbl = {
@@ -251,41 +250,6 @@ static void tcp_tune_dst(struct tcp_sock *tp, struct dst_entry *dst) {
             tp->rttvar = dst_metric(dst, RTAX_RTO_MIN);
         }
     } 
-}
-
-
-static __u32 jtcp_init_cwnd(struct tcp_sock *tp, struct dst_entry *dst) {
-    tcp_tune_dst(tp, dst);
-    jprobe_return();
-    return 0;
-}
-
-static void  jtcp_init_congestion_control (struct sock* sk) {
-    struct tcp_sock *tp = tcp_sk(sk);
-    struct dst_entry *dst = __sk_dst_get(sk);
-    __u32 cwnd;
-
-    if (dst != NULL) {
-        tcp_tune_dst(tp, dst);
-        cwnd = (dst ? dst_metric(dst, RTAX_INITCWND) : 0);
-        tp->snd_cwnd = min_t(__u32, cwnd, tp->snd_cwnd_clamp);
-    }
-    jprobe_return();
-}
-
-static int jtcp_retransmit_skb(struct sock *sk, struct sk_buff *skb) {
-    struct tcp_sock *tp = tcp_sk(sk);
-    struct dst_entry *dst = __sk_dst_get(sk);
-    __u32 cwnd;
-
-    if (dst != NULL) {
-        tcp_tune_dst(tp, dst);
-        cwnd = (dst ? dst_metric(dst, RTAX_INITCWND) : 0);
-        tp->snd_cwnd = min_t(__u32, cwnd, tp->snd_cwnd_clamp);
-    }
-
-    jprobe_return();
-    return 0;
 }
 
 static inline void tcp_tune_tuneit(struct sock *sk) { 
