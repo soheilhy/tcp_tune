@@ -45,6 +45,7 @@
 #define CTL_UNNUMBERED -2
 #define CTL_NAME(NAME) .ctl_name = (NAME)
 #define CTL_UNNAME .ctl_name = CTL_UNNUMBERED,
+#define CONFIG_DEFAULT_TCP_CONG "bic"
 #else
 #define CTL_UNNAME 
 #define CTL_NAME(NAME)
@@ -78,7 +79,6 @@ static struct tcp_congestion_ops *tcp_ca_find(const char *name)
 
     rcu_read_lock();
 	list_for_each_entry_rcu(e, tcp_cong_list, list) {
-
 		if (strcmp(e->name, name) == 0)
 			return e;
 	}
@@ -99,10 +99,15 @@ void tcp_get_default_congestion_control(char *name)
 	rcu_read_unlock();
 }
 
-
+#if TUNE_COMPAT < 19
 static int proc_tcp_tune_congestion_control(ctl_table *ctl, int write,
-				       void __user *buffer, size_t *lenp, loff_t *ppos)
-{
+                            struct file* filep,
+                            void __user *buffer, size_t *lenp, loff_t *ppos) {
+#else
+static int proc_tcp_tune_congestion_control(ctl_table *ctl, int write,
+                            struct file* filep,
+                            void __user *buffer, size_t *lenp, loff_t *ppos) {
+#endif
 	ctl_table tbl = {
 		.data = default_congestion_control,
 		.maxlen = TCP_CA_NAME_MAX,
@@ -110,9 +115,11 @@ static int proc_tcp_tune_congestion_control(ctl_table *ctl, int write,
 	int ret;
 
 //	tcp_get_default_congestion_control(default_congestion_control);
-
+#if TUNE_COMPAT < 19
+	ret = proc_dostring(&tbl, write, filep, buffer, lenp, ppos);
+#else
 	ret = proc_dostring(&tbl, write, buffer, lenp, ppos);
-
+#endif
 	if (write && ret == 0) {
         struct tcp_congestion_ops* ca;
         int ret = -ENOENT;
@@ -314,10 +321,20 @@ static u32 tcp_tune_recalc_ssthresh(struct sock *sk) {
     return sysctl_tcp_initial_cwnd;
 }
 
-static void tcp_tune_cong_avoid(struct sock *sk, u32 ack, u32 in_flight) {
+#if TUNE_COMPAT < 19
+static void tcp_tune_cong_avoid(struct sock *sk, u32 ack, u32 rtt, u32 in_flight, int flag)
+#else
+static void tcp_tune_cong_avoid(struct sock *sk, u32 ack, u32 in_flight)
+#endif
+{
     BUG_ON(TUNE_TCP_CA(sk) == NULL);
     if (likely(TUNE_TCP_CA(sk))) {
+#if TUNE_COMPAT < 19
+        TUNE_TCP_CA(sk)->cong_avoid(sk, ack, rtt, in_flight, flag);
+#else
         TUNE_TCP_CA(sk)->cong_avoid(sk, ack, in_flight);
+#endif 
+
     }
     tcp_tune_tuneit(sk); 
 }
@@ -330,8 +347,7 @@ static void tcp_tune_state(struct sock *sk, u8 new_state) {
     tcp_tune_tuneit(sk);
 }
 
-static u32 tcp_tune_undo_cwnd(struct sock *sk)
-{
+static u32 tcp_tune_undo_cwnd(struct sock *sk) {
     BUG_ON(TUNE_TCP_CA(sk) == NULL);
     if (likely(TUNE_TCP_CA(sk))) {
         u32 cwnd = TUNE_TCP_CA(sk)->undo_cwnd(sk);
@@ -339,12 +355,19 @@ static u32 tcp_tune_undo_cwnd(struct sock *sk)
     }
     return sysctl_tcp_initial_cwnd;
 }
-
+#if TUNE_COMPAT < 19
+static void tcp_tune_acked(struct sock *sk, u32 cnt)
+#else
 static void tcp_tune_acked(struct sock *sk, u32 cnt, s32 rtt_us)
+#endif
 {
     BUG_ON(TUNE_TCP_CA(sk) == NULL);
     if (likely(TUNE_TCP_CA(sk))) {
+#if TUNE_COMPAT < 19
+        TUNE_TCP_CA(sk)->pkts_acked(sk, cnt);
+#else
         TUNE_TCP_CA(sk)->pkts_acked(sk, cnt, rtt_us);
+#endif
     }
     tcp_tune_tuneit(sk);
 }
@@ -378,21 +401,22 @@ static __init int tcptune_module_init(void) {
         error = -ENOMEM;
         goto err;
     }
-
+#if TUNE_COMPAT > 18
     tcptune.flags |= TCP_CONG_NON_RESTRICTED;
-
+#endif
     error = tcp_register_congestion_control(&tcptune);
     if (error) {
         goto err; 
     }
-
+#if TUNE_COMPAT > 18
     tcp_cong_list = (struct list_head*) &tcptune.list.next->next;
+#else
+    tcp_cong_list = (struct list_head*) &tcptune.list.prev;
+#endif
 
     selected_congestion_control = tcp_ca_find(CONFIG_DEFAULT_TCP_CONG);
 
-//    list_move(&tcptune.list, &tcp_cong_list);
-
-    pr_info("TCP Tune registeration finalized\n"); 
+    pr_info("TCP Tune registeration finalized \n"); 
     return 0;
 
 err:
