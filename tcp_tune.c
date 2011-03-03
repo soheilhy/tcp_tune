@@ -270,9 +270,15 @@ static inline void tcp_tune_tuneit(struct sock *sk) {
 static void tcp_tune_init(struct sock *sk) {
     BUG_ON(TUNE_TCP_CA(sk) == NULL);
     if (likely(TUNE_TCP_CA(sk))) {
-        TUNE_TCP_CA(sk)->init(sk);
+		if (try_module_get(TUNE_TCP_CA(sk)->owner)) {
+            TUNE_TCP_CA(sk)->init(sk);
+        }
     }
     tcp_tune_tuneit(sk);
+}
+
+static void tcp_tune_release(struct sock *sk) {
+    module_put(TUNE_TCP_CA(sk)->owner);
 }
 
 static u32 tcp_tune_recalc_ssthresh(struct sock *sk) {
@@ -338,6 +344,7 @@ static void tcp_tune_acked(struct sock *sk, u32 cnt, s32 rtt_us)
 
 static struct tcp_congestion_ops tcptune = {
 	.init		= tcp_tune_init,
+    .release    = tcp_tune_release,
 	.ssthresh	= tcp_tune_recalc_ssthresh,
 	.cong_avoid	= tcp_tune_cong_avoid,
 	.set_state	= tcp_tune_state,
