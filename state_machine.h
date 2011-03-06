@@ -1,42 +1,35 @@
 #ifndef TUNE_STATE_MACHINE
 #define TUNE_STATE_MACHINE
 
+#include "version.h"
 #include "instructions.h"
 
-#define Condition   u8
-#define ACKED       0x01
-#define DROPPED     0x02
-#define TIMER_1     0x04
-#define TIMER_2     0x08
+#define MAX_EVENT   4
 
-struct state;
+enum event {
+    ACKED,
+    DROPPED,
+    TIMER,
+    INIT_EVENT = MAX_EVENT - 1,
+};
 
 struct transition {
     struct state* to;
-    condition condition;
-}
+};
 
 struct state {
-    struct action*      action;
-    struct transition   transitions[];
-}
+    struct action action;
+    struct transition transitions[MAX_EVENT];
+};
+
+#define MAX_STATES  20
 
 struct state_machine {
-    struct state    states[];
-    struct action*  final_action;
-}
+    struct state states[MAX_STATES];
+    struct action final_action;
+};
 
-enum event {
-    INIT_EVENT,
-    ACKED,
-    DROPPED,
-    TIMER
-}
-
-static int register_new_state_machine(struct state_machine* state_machine);
-
-static int sk_register_state_machine(struct tcp_sock* sk, struct state_machine* state_machine);
-
-static struct state* handle_event(struct state_machine* state_machine, struct sock* sk, enum event e);
+int sk_register_state_machine(struct sock* sk, struct state_machine* state_machine);
+struct state* handle_event(struct state_machine* state_machine, struct sock* sk, enum event e);
 
 #endif

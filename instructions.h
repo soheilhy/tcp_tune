@@ -20,7 +20,11 @@
 #ifndef TUNE_ACTION_H
 #define TUNE_ACTION_H
 
-#include "tcp_tune.h"
+#include <linux/socket.h>
+#include <linux/tcp.h>
+#include <net/tcp.h>
+
+#include "version.h"
 
 #define MAX_OPERANDS    3
 
@@ -48,7 +52,7 @@ enum OP_CODES {
     JLT,
     JGT,
 
-    TIMER = 128
+    TIMER_REG = 128
 };
 
 enum VALUE_CODES {
@@ -71,25 +75,44 @@ struct instruction {
     value_code_t operands[MAX_OPERANDS];
 };
 
+
+#define INSTRUCTION2(inst, code, op1, op2) \
+            { \
+                inst->op_code = code; \
+                inst->operands[1] = op1; \
+                inst->operands[2] = op2; \
+            }
+
+
+#define INSTRUCTION3(inst, code, op1, op2, op3) \
+            { \
+                inst->op_code = code; \
+                inst->operands[1] = op1; \
+                inst->operands[2] = op2; \
+                inst->operands[3] = op3; \
+            }
+
+#define MAX_INSTRUCTIONS    20
+
 struct action {
     u8 instruction_count;
-    struct instruction instructions[];
+    struct instruction instructions[MAX_INSTRUCTIONS];
 };
 
-void* get_address(value_code_t value_code); 
+void* get_address(value_code_t value_code, struct sock* sk); 
 
-void execute_opcode(op_code_t op_code, 
+int execute_opcode(op_code_t op_code, 
                     value_code_t value_code1, 
                     value_code_t value_code2, 
                     value_code_t value_code3,
                     struct sock* sk);
 
 #define execute_instruction(instruction, sk) \
-        execute_opcode( instruction->op_code, \
-                        instruction->operands[0], \
-                        instruction->operands[1], \
-                        instruction->operand[2], \
+        execute_opcode( (instruction)->op_code, \
+                        (instruction)->operands[0], \
+                        (instruction)->operands[1], \
+                        (instruction)->operands[2], \
                         sk)
 
-static void execute_action(struct action* action, struct sock* sk);
+void execute_action(struct action* action, struct sock* sk);
 #endif

@@ -1,9 +1,10 @@
 #include "instructions.h"
+#include "tcp_tune.h"
 
 void* get_address(value_code_t value_code, struct sock* sk)
 {
     struct tcp_sock* tcp_socket = tcp_sk(sk);
-    struct inet_connection_sock* inet_sock = inet_sk(sk);
+    struct inet_connection_sock* inet_c_sk = inet_csk(sk);
     struct tcp_tune* tcp_tune_ca = inet_csk_ca(sk);
 
     if (likely(value_code < CONSTANT_CONTEXT)) {
@@ -11,7 +12,7 @@ void* get_address(value_code_t value_code, struct sock* sk)
             case SRTT:
                 return &tcp_socket->srtt;
             case RTO:
-                return &inet_sk.icsk_rto;
+                return &inet_c_sk->icsk_rto;
 
             case CWND:
                 return &tcp_socket->snd_cwnd;
@@ -32,42 +33,47 @@ void* get_address(value_code_t value_code, struct sock* sk)
     } else {
        return &constants.c32[value_code - CONSTANT_CONTEXT];
     }
+
+    return 0;
 }
+
+#define get_value(type, code, sk)    *((type*)get_address(code, sk))
 
 int execute_opcode(op_code_t op_code, 
                     value_code_t value_code1, 
                     value_code_t value_code2, 
                     value_code_t value_code3,
                     struct sock* sk) {
+    u32* res;
     switch (op_code) {
         case ADD:
-            u32* res = (u32*) get_address(value_code3, sk);
-            *res = (u32) (*get_address(value_code1, sk)) + (u32) (*get_address(value_code2, sk));
+            res = (u32*) get_address(value_code3, sk);
+            *res = get_value(u32, value_code1, sk) + get_value(u32, value_code2, sk);
             break;
 
         case SUBTRACK:
-            u32* res = (u32*) get_address(value_code3, sk);
-            *res = (u32) (*get_address(value_code1, sk)) - (u32) (*get_address(value_code2, sk));
+            res = (u32*) get_address(value_code3, sk);
+            *res = get_value(u32, value_code1, sk) - get_value(u32, value_code2, sk);
             break;
             
         case MULTIPLY:
-            u32* res = (u32*) get_address(value_code3, sk);
-            *res = (u32) (*get_address(value_code1, sk)) * (u32) (*get_address(value_code2, sk));
+            res = (u32*) get_address(value_code3, sk);
+            *res = get_value(u32, value_code1, sk) * get_value(u32, value_code2, sk);
             break;
 
         case DIVIDE:
-            u32* res = (u32*) get_address(value_code3, sk);
-            *res = (u32) (*get_address(value_code1, sk)) / (u32) (*get_address(value_code2, sk));
+            res = (u32*) get_address(value_code3, sk);
+            *res = get_value(u32, value_code1, sk) / get_value(u32, value_code2, sk);
             break;
 
         case MOD:
-            u32* res = (u32*) get_address(value_code3, sk);
-            *res = (u32) (*get_address(value_code1, sk)) % (u32) (*get_address(value_code2, sk));
+            res = (u32*) get_address(value_code3, sk);
+            *res = get_value(u32, value_code1, sk) % get_value(u32, value_code2, sk);
             break;
 
         case ASSIGN:
-            void* res = get_address(value_code2, sk);
-            *res = (*get_address(value_code1, sk));
+            res = get_address(value_code2, sk);
+            *res = get_value(u32, value_code1, sk);
             break;
 
         case LOCK:
@@ -76,7 +82,7 @@ int execute_opcode(op_code_t op_code,
         case UNLOCK:
             break;
 
-        case TIMER: 
+        case TIMER_REG: 
             break;
         
         case JNZ:
@@ -96,7 +102,7 @@ int execute_opcode(op_code_t op_code,
     return 1;
 }
 
-static void execute_action(struct action* action, struct sock* sk) {
+void execute_action(struct action* action, struct sock* sk) {
     int i = 0;
 
     if (unlikely(!action)) {
@@ -104,7 +110,7 @@ static void execute_action(struct action* action, struct sock* sk) {
     }
 
     for (i = 0; i < action->instruction_count; ) {
-        i += execute_instruction(action->instructions[i], sk); 
+        i += execute_instruction(&(action->instructions[i]), sk); 
     }
 }
 

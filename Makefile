@@ -1,5 +1,5 @@
 obj-m += tcp_tune.o
-tcp_tune-m := instructions.o
+tcp_tune-objs := state_machine.o instructions.o
 
 all:
 		make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
