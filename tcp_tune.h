@@ -28,40 +28,12 @@
 #include <linux/timer.h>
 #include <net/tcp.h>
 
-
 #include "state_machine.h"
+
 /*
  * Turn it on for debug information.
  */
-//#define TCP_TUNE_DEBUG
-
-
-#define GLOBAL_REGISTER_COUNT 2
-
-static struct {
-    u32 r32[GLOBAL_REGISTER_COUNT];
-    u64 r64[GLOBAL_REGISTER_COUNT];
-} globals;
-
-
-struct locals {
-    u32 init_cwnd;
-    u32 cwnd_clamp;
-};
-
-#define MAX_CONSTANTS 16
-
-static struct {
-    u32 c32[MAX_CONSTANTS];   
-} constants;
-
-#define MAX_TIMERS 2
-
-struct timers {
-    struct timer_list timers[MAX_TIMERS];
-};
-
-static struct timer_list timer1; 
+#define TCP_TUNE_DEBUG
 
 struct tcp_tune {
     struct state_machine* state_machine;

@@ -4,7 +4,6 @@
 #include <linux/version.h>
 #include <linux/kernel.h>
 
-
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,19))
 #define TUNE_COMPAT 18
 #elif (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))

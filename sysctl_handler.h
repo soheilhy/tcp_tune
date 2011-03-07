@@ -2,7 +2,11 @@
 #define TUNE_SYSCTL_HANDLER
 
 #include <linux/proc_fs.h>
+#include <linux/tcp.h>
 #include <linux/sysctl.h>
+#include <net/tcp.h>
+
+
 #include "version.h"
 
 
@@ -24,7 +28,7 @@ static int sysctl_tcp_min_rto __read_mostly = 20;
 
 static int min_cwnd = 2;
 
-static int register_sysctl_entries(void);
-static int unregister_sysctl_enteries(void);
+int register_sysctl_entries(void);
+void unregister_sysctl_enteries(void);
 
 #endif

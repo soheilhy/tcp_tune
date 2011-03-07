@@ -27,6 +27,9 @@
 #include "version.h"
 
 #define MAX_OPERANDS    3
+#define MAX_GLOBAL_REGISTERS 2
+#define MAX_CONSTANTS 16
+#define MAX_TIMERS 2
 
 #define op_code_t       u8
 #define value_code_t    u8
@@ -44,13 +47,14 @@ enum OP_CODES {
     MOD, 
     ASSIGN,
 
-    LOCK = 16,
-    UNLOCK, 
+    GLOCK = 16,
+    GUNLOCK, 
 
     JNZ = 32,
     JZ,
     JLT,
     JGT,
+    JEQ,
 
     TIMER_REG = 128
 };
@@ -68,7 +72,21 @@ enum VALUE_CODES {
     CWND = FLOW_CONTEXT,
     INIT_CWND,
     CWND_CLAMP,
+    SSTHRESH,
 };
+
+
+struct locals {
+    u32 init_cwnd;
+    u32 cwnd_clamp;
+};
+
+
+struct timers {
+    struct timer_list timers[MAX_TIMERS];
+};
+
+
 
 struct instruction {
     op_code_t op_code;
@@ -79,17 +97,17 @@ struct instruction {
 #define INSTRUCTION2(inst, code, op1, op2) \
             { \
                 inst->op_code = code; \
-                inst->operands[1] = op1; \
-                inst->operands[2] = op2; \
+                inst->operands[0] = op1; \
+                inst->operands[1] = op2; \
             }
 
 
 #define INSTRUCTION3(inst, code, op1, op2, op3) \
             { \
                 inst->op_code = code; \
-                inst->operands[1] = op1; \
-                inst->operands[2] = op2; \
-                inst->operands[3] = op3; \
+                inst->operands[0] = op1; \
+                inst->operands[1] = op2; \
+                inst->operands[2] = op3; \
             }
 
 #define MAX_INSTRUCTIONS    20
@@ -101,7 +119,9 @@ struct action {
 
 void* get_address(value_code_t value_code, struct sock* sk); 
 
-int execute_opcode(op_code_t op_code, 
+#define get_value(type, code, sk)    *((type*)get_address(code, sk))
+
+u32 execute_opcode(op_code_t op_code, 
                     value_code_t value_code1, 
                     value_code_t value_code2, 
                     value_code_t value_code3,

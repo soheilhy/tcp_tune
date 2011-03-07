@@ -31,7 +31,7 @@ int sk_register_state_machine(struct sock* sk, struct state_machine* state_machi
     return 0;
 }
 
-#define run_state_machine_action(state_machine, sk) execute_action(&state_machine->action, sk)
+#define run_state_action(state, sk) execute_action(&state->action, sk)
 
 struct state* handle_event(struct state_machine* state_machine, struct sock* sk, enum event e) {     
 
@@ -43,8 +43,9 @@ struct state* handle_event(struct state_machine* state_machine, struct sock* sk,
 
     switch (e) { 
         case INIT_EVENT:
+            pr_info("init is called\n");
             current_state = &state_machine->states[0];
-            run_state_machine_action(current_state, sk);
+            run_state_action(current_state, sk);
             break;
 
         case ACKED:
@@ -57,10 +58,12 @@ struct state* handle_event(struct state_machine* state_machine, struct sock* sk,
             }
 
             current_state = t->to;
-            run_state_machine_action(current_state, sk);
+            run_state_action(current_state, sk);
             break;
     }
 
     tcp_tune_ca->current_state = current_state;
     return current_state;
 }
+
+
