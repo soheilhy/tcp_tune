@@ -43,4 +43,5 @@ struct tcp_tune {
     struct timers* timers;
 };
 
+void register_state_machine(struct state_machine* sm);
 #endif 

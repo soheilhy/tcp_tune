@@ -17,9 +17,16 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 #include "sysctl_handler.h"
+#include "proc_handler.h"
 #include "tcp_tune.h"
 
 static struct state_machine* current_state_machine; 
+
+void register_state_machine(struct state_machine* sm) 
+{
+    // TODO: free(current_state_machine);
+    current_state_machine = sm;
+}
 
 static inline struct state_machine* create_default_state_machine(void) 
 {
@@ -62,6 +69,7 @@ static inline struct state_machine* create_default_state_machine(void)
 static void tcp_tune_init(struct sock *sk) 
 {
     BUG_ON(!current_state_machine);
+    pr_info("State machine registered: %p\n", current_state_machine);
     sk_register_state_machine(sk, current_state_machine);
 }
 
@@ -135,6 +143,10 @@ static __init int tcptune_module_init(void) {
         goto err;
     }
 
+    error = register_tcptune_proc_fsops();
+    if (error) {
+        goto err2;
+    }
 
 #if TUNE_COMPAT > 18
     tcptune.flags |= TCP_CONG_NON_RESTRICTED;
@@ -147,6 +159,9 @@ static __init int tcptune_module_init(void) {
     pr_info("TCP Tune registeration finalized \n"); 
     return 0;
 
+err2:
+    unregister_tcptune_proc_fsops();
+
 err:
     pr_info("TCP Tune cannot be registered\n");
     return error;
@@ -155,6 +170,7 @@ module_init(tcptune_module_init);
 
 static __exit void tcptune_module_exit(void) {
     unregister_sysctl_enteries();
+    unregister_tcptune_proc_fsops();
     tcp_unregister_congestion_control(&tcptune);
     pr_info("TCP Tune unregistered\n");
 }

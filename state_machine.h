@@ -1,6 +1,7 @@
-#ifndef TUNE_STATE_MACHINE
-#define TUNE_STATE_MACHINE
+#ifndef TUNE_STATE_MACHINE_H
+#define TUNE_STATE_MACHINE_H
 
+#include <linux/ctype.h>
 #include "version.h"
 #include "instructions.h"
 
@@ -31,5 +32,12 @@ struct state_machine {
 
 int sk_register_state_machine(struct sock* sk, struct state_machine* state_machine);
 struct state* handle_event(struct state_machine* state_machine, struct sock* sk, enum event e);
+
+struct state_machine* create_new_statemachine(void);
+
+// Parsing functionalities
+void add_transitions_to_state_machine(char* buffer, int start, int end, struct state_machine* state_machine);
+void add_constants_to_state_machine(char* buffer, int start, int end, struct state_machine* state_machine);
+void add_action_to_state_machine(char* buffer, int start, int end, struct state_machine* state_machine);
 
 #endif

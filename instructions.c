@@ -78,8 +78,9 @@ u32 execute_opcode(op_code_t op_code,
             *res = get_value(u32, value_code1, sk) * get_value(u32, value_code2, sk);
 
 #ifdef TCP_TUNE_DEBUG
-            pr_info("Multiplying %u %u %u %u \n", 
+            pr_info("Multiplying %u %u %u %u %u \n", 
                     get_value(u32, value_code1, sk),
+                    value_code2, 
                     get_value(u32, value_code2, sk), 
                     constants.c32[0],
                     *res);
@@ -100,6 +101,14 @@ u32 execute_opcode(op_code_t op_code,
         case ASSIGN:
             res = get_address(value_code2, sk);
             *res = get_value(u32, value_code1, sk);
+
+            pr_info("ASSIGN %u %u %u %u %u \n", 
+                    get_value(u32, value_code1, sk),
+                    value_code2, 
+                    get_value(u32, value_code2, sk), 
+                    constants.c32[0],
+                    get_value(u32, CONSTANT_CONTEXT, 0));
+
             break;
 
         case GLOCK:

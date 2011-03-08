@@ -17,45 +17,17 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifdef TUNE_PROC_HANDLER
-#define TUNE_PROC_HANDLER
+#ifndef TUNE_PROC_HANDLER_H
+#define TUNE_PROC_HANDLER_H
 
 #include <linux/proc_fs.h>
 
-static int tcpflowspy_open(struct inode * inode, struct file * file) {
-    return 0;
-}
+int tcptune_proc_open(struct inode * inode, struct file * file);
+ssize_t 
+    tcptune_proc_read(struct file *file, char __user *buf, size_t len, loff_t *ppos);
+ssize_t
+    tcptune_proc_write(struct file *file, const char *user_buffer, size_t len, loff_t * off);
 
-static ssize_t tcpflowspy_read(struct file *file, char __user *buf,
-        size_t len, loff_t *ppos) {
-
-}
-
-
-static ssize_t
-    procfs_write(struct file *file, const char *buffer, size_t len, loff_t * off)
-{
-    if ( len > PROCFS_MAX_SIZE ) {
-        procfs_buffer_size = PROCFS_MAX_SIZE;
-    } else {
-        procfs_buffer_size = len;
-    }
-
-    if ( copy_from_user(procfs_buffer, buffer, procfs_buffer_size) ) {
-        return -EFAULT;
-    }
-
-    printk(KERN_INFO "procfs_write: write %lu bytes\n", procfs_buffer_size);
-
-    return procfs_buffer_size;
-}
-
-
-static const struct file_operations tcpflowspy_fops = {
-    .owner	 = THIS_MODULE,
-    .open	 = tcp_tune_proc_open,
-    .read    = tcp_tune_proc_read,
-    .write   = tcp_tune_proc_write,
-};
-
+int register_tcptune_proc_fsops(void);
+void unregister_tcptune_proc_fsops(void);
 #endif
