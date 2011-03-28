@@ -98,6 +98,14 @@ static void tcp_tune_cong_avoid(struct sock *sk, u32 ack, u32 in_flight)
 
 static void tcp_tune_state(struct sock *sk, u8 new_state) 
 {
+    if (new_state == TCP_CA_Loss) {
+        struct tcp_tune* tcp_tune_ca = inet_csk_ca(sk);
+        struct state_machine* current_state_machine = tcp_tune_ca->state_machine;
+        BUG_ON(!current_state_machine);
+        
+        pr_info("DDEDDDDDRIOOOOOOPP\n");
+        handle_event(current_state_machine, sk, DROPPED);
+    }
 }
 
 static u32 tcp_tune_undo_cwnd(struct sock *sk) {

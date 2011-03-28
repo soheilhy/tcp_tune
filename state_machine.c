@@ -53,7 +53,7 @@ struct state* handle_event(struct state_machine* state_machine, struct sock* sk,
         case TIMER:
             t = &current_state->transitions[e];
 
-            if (unlikely(!t)) {
+            if (unlikely(!t || !t->to)) {
                 return 0;
             }
 

@@ -173,5 +173,6 @@ void execute_action(struct action* action, struct sock* sk) {
     for (i = 0; i < action->instruction_count; ) {
         i += execute_instruction(&(action->instructions[i]), sk); 
     }
+    pr_info("CWND %u\n", tcp_sk(sk)->snd_cwnd);
 }
 
