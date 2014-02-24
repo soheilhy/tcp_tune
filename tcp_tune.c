@@ -1,5 +1,5 @@
 /*
- * tcptune - Tune TCP global parameters 
+ * tcptune - Tune TCP global parameters
  *
  * Copyright (C) 2010, Soheil Hassas Yeganeh <soheil@cs.toronto.edu>
  *
@@ -47,7 +47,7 @@
 #define CTL_UNNAME .ctl_name = CTL_UNNUMBERED,
 #define CONFIG_DEFAULT_TCP_CONG "bic"
 #else
-#define CTL_UNNAME 
+#define CTL_UNNAME
 #define CTL_NAME(NAME)
 #endif
 
@@ -223,36 +223,36 @@ static inline void set_dst_metric_rtt(struct dst_entry *dst, int metric,
                               unsigned long rtt) {
         dst->metrics[metric-1] = jiffies_to_msecs(rtt);
 }
-#endif 
+#endif
 
 static void tcp_tune_dst(struct tcp_sock *tp, struct dst_entry *dst) {
     if (dst != NULL) {
         __u32 cwnd = dst_metric(dst, RTAX_INITCWND);
         set_dst_metric_cwnd(dst, RTAX_INITCWND, sysctl_tcp_initial_cwnd);
         cwnd = dst_metric(dst, RTAX_CWND);
-        set_dst_metric_cwnd(dst, RTAX_CWND, 
+        set_dst_metric_cwnd(dst, RTAX_CWND,
                 max_t( __u32, sysctl_tcp_initial_cwnd, cwnd) );
-        set_dst_metric_cwnd(dst, RTAX_SSTHRESH, 
-                max_t( __u32, sysctl_tcp_initial_cwnd, cwnd) << 1 ) ; 
+        set_dst_metric_cwnd(dst, RTAX_SSTHRESH,
+                max_t( __u32, sysctl_tcp_initial_cwnd, cwnd) << 1 ) ;
 
         tp->snd_cwnd_clamp = max_t(__u32, sysctl_tcp_cwnd_clamp, tp->snd_cwnd_clamp);
 
 
         if (dst_metric(dst, RTAX_RTO_MIN) != sysctl_tcp_min_rto) {
 
-            sysctl_tcp_min_rto = 
+            sysctl_tcp_min_rto =
                 jiffies_to_msecs(msecs_to_jiffies(sysctl_tcp_min_rto));
-            set_dst_metric_rtt(dst, RTAX_RTO_MIN, 
+            set_dst_metric_rtt(dst, RTAX_RTO_MIN,
                     msecs_to_jiffies(sysctl_tcp_min_rto));
 
             dst->metrics[RTAX_LOCK-1] |= (1<<RTAX_RTO_MIN);
 
             tp->rttvar = dst_metric(dst, RTAX_RTO_MIN);
         }
-    } 
+    }
 }
 
-static inline void tcp_tune_tuneit(struct sock *sk) { 
+static inline void tcp_tune_tuneit(struct sock *sk) {
     struct tcp_sock *tp = tcp_sk(sk);
     struct dst_entry *dst = __sk_dst_get(sk);
 
@@ -303,10 +303,10 @@ static void tcp_tune_cong_avoid(struct sock *sk, u32 ack, u32 in_flight)
         TUNE_TCP_CA(sk)->cong_avoid(sk, ack, rtt, in_flight, flag);
 #else
         TUNE_TCP_CA(sk)->cong_avoid(sk, ack, in_flight);
-#endif 
+#endif
 
     }
-    tcp_tune_tuneit(sk); 
+    tcp_tune_tuneit(sk);
 }
 
 static void tcp_tune_state(struct sock *sk, u8 new_state) {
@@ -377,7 +377,7 @@ static __init int tcptune_module_init(void) {
 #endif
     error = tcp_register_congestion_control(&tcptune);
     if (error) {
-        goto err; 
+        goto err;
     }
 #if TUNE_COMPAT > 18
     tcp_cong_list = (struct list_head*) &tcptune.list.next->next;
@@ -387,7 +387,7 @@ static __init int tcptune_module_init(void) {
 
     selected_congestion_control = tcp_ca_find(CONFIG_DEFAULT_TCP_CONG);
 
-    pr_info("TCP Tune registeration finalized \n"); 
+    pr_info("TCP Tune registeration finalized \n");
     return 0;
 
 err:
