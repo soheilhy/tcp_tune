@@ -1,5 +1,5 @@
 
-#ifndef TUNE_SYNTAX_H 
+#ifndef TUNE_SYNTAX_H
 #define TUNE_SYNTAX_H
 
 #define BEGIN_TOKEN         "BEGIN"
@@ -9,3 +9,4 @@
 #define CONSTANT_TOKEN      "C"
 
 #endif
+

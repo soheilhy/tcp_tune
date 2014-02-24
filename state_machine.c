@@ -18,7 +18,8 @@
 #include "state_machine.h"
 #include "tcp_tune.h"
 
-int sk_register_state_machine(struct sock* sk, struct state_machine* state_machine) {
+int sk_register_state_machine(struct sock *sk,
+                              struct state_machine *state_machine) {
     //struct tcp_sock* tcp_socket = tcp_sk(sk);
     //struct inet_connection_sock* inet_sock = inet_sk(sk);
     struct tcp_tune* tcp_tune_ca = (struct tcp_tune*) inet_csk_ca(sk);
@@ -27,21 +28,21 @@ int sk_register_state_machine(struct sock* sk, struct state_machine* state_machi
     tcp_tune_ca->current_state = 0;
 
     handle_event(state_machine, sk, INIT_EVENT);
-    
+
     return 0;
 }
 
 #define run_state_action(state, sk) execute_action(&state->action, sk)
 
-struct state* handle_event(struct state_machine* state_machine, struct sock* sk, enum event e) {     
-
+struct state *handle_event(struct state_machine *state_machine, struct sock *sk,
+                           enum event e) {
     //struct tcp_sock* tcp_socket = tcp_sk(sk);
     //struct inet_sock* inet_sock = inet_sk(sk);
     struct tcp_tune* tcp_tune_ca = inet_csk_ca(sk);
     struct state* current_state = tcp_tune_ca->current_state;
     struct transition* t;
 
-    switch (e) { 
+    switch (e) {
         case INIT_EVENT:
             pr_info("init is called\n");
             current_state = &state_machine->states[0];
@@ -68,13 +69,15 @@ struct state* handle_event(struct state_machine* state_machine, struct sock* sk,
 
 struct state_machine* create_new_statemachine(void)
 {
-    struct state_machine* state_machine = 
+    struct state_machine* state_machine =
                              kzalloc(sizeof(struct state_machine), GFP_KERNEL);
     return state_machine;
 }
+
 #define is_end(s)   (s[0] == 'E' && s[1] == 'N' && s[2] == 'D')
-void add_transitions_to_state_machine(char* buffer, int start, int end, struct state_machine* state_machine) 
-{
+
+void add_transitions_to_state_machine(char *buffer, int start, int end,
+                                      struct state_machine *state_machine) {
 
     int from_state_id;
     int to_state_id;
@@ -86,9 +89,9 @@ void add_transitions_to_state_machine(char* buffer, int start, int end, struct s
         buffer++;
     }
 
-    while (!is_end(buffer)) { 
+    while (!is_end(buffer)) {
         buffer = skip_spaces(buffer);
-    
+
         from_state_id = 0;
         while (!isspace(*buffer)) {
             from_state_id = from_state_id * 10 + (int) *buffer - '0';
@@ -102,7 +105,7 @@ void add_transitions_to_state_machine(char* buffer, int start, int end, struct s
             to_state_id = to_state_id * 10 + (int) *buffer - '0';
             buffer++;
         }
-    
+
         from_state = &state_machine->states[from_state_id];
         to_state = &state_machine->states[to_state_id];
 
@@ -124,8 +127,8 @@ void add_transitions_to_state_machine(char* buffer, int start, int end, struct s
     }
 }
 
-void add_constants_to_state_machine(char* buffer, int start, int end, struct state_machine* state_machine)
-{
+void add_constants_to_state_machine(char *buffer, int start, int end,
+                                    struct state_machine *state_machine) {
     u32 constant_id;
     u32 value;
     u32* constant_register;
@@ -135,9 +138,9 @@ void add_constants_to_state_machine(char* buffer, int start, int end, struct sta
         buffer++;
     }
 
-    while (!is_end(buffer)) { 
+    while (!is_end(buffer)) {
         buffer = skip_spaces(buffer);
-    
+
         constant_id = 0;
         while (!isspace(*buffer)) {
             constant_id = constant_id * 10 + (int) *buffer - '0';
@@ -151,19 +154,18 @@ void add_constants_to_state_machine(char* buffer, int start, int end, struct sta
             value = value * 10 + (int) *buffer - '0';
             buffer++;
         }
-    
+
         constant_register = get_address(CONSTANT_CONTEXT + constant_id, 0);
         *constant_register = value;
 
         buffer = skip_spaces(buffer + 1);
-        pr_info("Constant %d <-- %d : %u \n", CONSTANT_CONTEXT + constant_id, *constant_register, get_value(u32, CONSTANT_CONTEXT, 0));
-
-        
+        pr_info("Constant %d <-- %d : %u \n", CONSTANT_CONTEXT + constant_id,
+                *constant_register, get_value(u32, CONSTANT_CONTEXT, 0));
     }
 }
 
-void add_action_to_state_machine(char* buffer, int start, int end, struct state_machine* state_machine)
-{
+void add_action_to_state_machine(char *buffer, int start, int end,
+                                 struct state_machine *state_machine) {
     u32 operand_code_1;
     u32 operand_code_2;
     u32 operand_code_3;
@@ -179,14 +181,14 @@ void add_action_to_state_machine(char* buffer, int start, int end, struct state_
 
     action = &state_machine->states[action_number].action;
 
-    while (!is_end(buffer)) { 
+    while (!is_end(buffer)) {
         int operand_count = 0;
-        struct instruction* current_inst; 
+        struct instruction* current_inst;
         op_code_t op_code = ADD;
 
         buffer = skip_spaces(buffer);
-   
-        switch (*buffer) { 
+
+        switch (*buffer) {
             case '+':
                 op_code = ADD;
                 operand_count = 3;
@@ -221,12 +223,12 @@ void add_action_to_state_machine(char* buffer, int start, int end, struct state_
                 op_code = JLT;
                 operand_count = 3;
                 break;
-                
+
             case '>':
                 op_code = JGT;
                 operand_count = 3;
                 break;
-            
+
             case 'a':
                 op_code = ASSIGN;
                 operand_count = 2;
@@ -262,21 +264,20 @@ void add_action_to_state_machine(char* buffer, int start, int end, struct state_
         current_inst = action->instructions + action->instruction_count;
 
         if (operand_count > 2) {
-            buffer = skip_spaces(buffer); 
+            buffer = skip_spaces(buffer);
             operand_code_3 = 0;
             while (!isspace(*buffer)) {
                 operand_code_3 = operand_code_3 * 10 + (int) *buffer - '0';
                 buffer++;
             }
 
-            INSTRUCTION3(current_inst, 
-                             op_code, operand_code_1, operand_code_2, operand_code_3); 
-        } else { 
-            INSTRUCTION2(current_inst, 
-                             op_code, operand_code_1, operand_code_2); 
+            INSTRUCTION3(current_inst, op_code, operand_code_1, operand_code_2,
+                         operand_code_3);
+        } else {
+          INSTRUCTION2(current_inst, op_code, operand_code_1, operand_code_2);
         }
-        
-        pr_info("action %d %d %d\n", op_code, operand_code_1, operand_code_2); 
+
+        pr_info("action %d %d %d\n", op_code, operand_code_1, operand_code_2);
         action->instruction_count++;
         buffer = skip_spaces(buffer+1);
     }

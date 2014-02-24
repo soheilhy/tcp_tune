@@ -73,7 +73,7 @@ static ctl_table net_root_table[] = {
 static struct ctl_table_header * hdr;
 
 
-int register_sysctl_entries(void) 
+int register_sysctl_entries(void)
 {
 
 #if TUNE_COMPAT > 18
@@ -93,3 +93,4 @@ void unregister_sysctl_enteries(void)
 {
     unregister_sysctl_table(hdr);
 }
+

@@ -44,11 +44,11 @@ enum OP_CODES {
     SUBTRACK,
     MULTIPLY,
     DIVIDE,
-    MOD, 
+    MOD,
     ASSIGN,
 
     GLOCK = 16,
-    GUNLOCK, 
+    GUNLOCK,
 
     JNZ = 32,
     JZ,
@@ -117,15 +117,13 @@ struct action {
     struct instruction instructions[MAX_INSTRUCTIONS];
 };
 
-void* get_address(value_code_t value_code, struct sock* sk); 
+void* get_address(value_code_t value_code, struct sock* sk);
 
 #define get_value(type, code, sk)    *((type*)get_address(code, sk))
 
-u32 execute_opcode(op_code_t op_code, 
-                    value_code_t value_code1, 
-                    value_code_t value_code2, 
-                    value_code_t value_code3,
-                    struct sock* sk);
+u32 execute_opcode(op_code_t op_code, value_code_t value_code1,
+                   value_code_t value_code2, value_code_t value_code3,
+                   struct sock *sk);
 
 #define execute_instruction(instruction, sk) \
         execute_opcode( (instruction)->op_code, \
@@ -136,3 +134,4 @@ u32 execute_opcode(op_code_t op_code,
 
 void execute_action(struct action* action, struct sock* sk);
 #endif
+

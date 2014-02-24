@@ -16,7 +16,7 @@
 #define CTL_UNNAME .ctl_name = CTL_UNNUMBERED,
 #define CONFIG_DEFAULT_TCP_CONG "bic"
 #else
-#define CTL_UNNAME 
+#define CTL_UNNAME
 #define CTL_NAME(NAME)
 #endif
 
@@ -32,3 +32,4 @@ int register_sysctl_entries(void);
 void unregister_sysctl_enteries(void);
 
 #endif
+
